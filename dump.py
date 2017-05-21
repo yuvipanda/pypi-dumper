@@ -2,15 +2,14 @@ import os
 import xmlrpc.client
 import json
 
-client = xmlrpc.client.ServerProxy('https://pypi.python.org/pypi')
+from concurrent.futures import ThreadPoolExecutor
 
-packages = client.list_packages()
 
-for package in packages:
+def dump_package(package):
     filepath = '%s.json' % package
     if os.path.exists(filepath):
         print('skipping ', package)
-        continue
+        return
 
     versions = [client.release_data(package, version) for version in client.package_releases(package, True)]
 
@@ -21,3 +20,14 @@ for package in packages:
 
     print('Done ', package)
 
+client = xmlrpc.client.ServerProxy('https://pypi.python.org/pypi')
+
+packages = client.list_packages()
+
+pool = ThreadPoolExecutor()
+
+for package in packages:
+    pool.submit(lambda: dump_package(package))
+
+
+pool.shutdown()
